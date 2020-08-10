@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30011.22
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IO.Eventuate.Tram.Tests", "IO.Eventuate.Tram.Tests.csproj", "{83539DDD-CAE0-4CC2-9C30-2C9E75F679BF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{83539DDD-CAE0-4CC2-9C30-2C9E75F679BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{83539DDD-CAE0-4CC2-9C30-2C9E75F679BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{83539DDD-CAE0-4CC2-9C30-2C9E75F679BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{83539DDD-CAE0-4CC2-9C30-2C9E75F679BF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {06F4704C-F3F1-42B7-8950-0655FA92E13D}
+	EndGlobalSection
+EndGlobal
