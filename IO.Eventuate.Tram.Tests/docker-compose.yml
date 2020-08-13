@@ -46,7 +46,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
   cdcservice:
-    image: eventuateio/eventuate-cdc-service:${CDC_SERVICE_DOCKER_VERSION:?You must set the CDC_SERVICE_DOCKER_VERSION environment variable.}
+    image: eventuateio/eventuate-cdc-service:0.9.0.RELEASE
     depends_on:
     - kafka
     - mssql
