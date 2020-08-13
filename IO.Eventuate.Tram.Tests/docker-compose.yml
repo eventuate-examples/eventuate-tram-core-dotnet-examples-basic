@@ -1,43 +1,50 @@
----
-version: '3.4'
+version: '3.3'
 services:
   dbsetup:
+#    The mssql-tools image seems to only have a "latest" tag, so specifying the digest here to ensure a specific version is used
     image: mcr.microsoft.com/mssql-tools@sha256:62556500522072535cb3df2bb5965333dded9be47000473e9e0f84118e248642
     depends_on:
     - mssql
     environment:
-      TRAM_DB_SERVER: "LAPTOP-7G6A2VOR"
-      TRAM_SA_PASSWORD: "Sa@123"
+      TRAM_DB_SERVER: "mssql"
+      TRAM_SA_PASSWORD: "App@Passw0rd"
       TRAM_DB: "TramDb"
       TRAM_SCHEMA: "eventuate"
       TRAM_SCHEMA2: "schema1"
+    volumes:
+    - ./TestDatabase:/scripts
+    working_dir: /scripts
+    entrypoint: [ "bash", "./entrypoint.sh" ]
+  eventuatetramtests:
+    image: mcr.microsoft.com/dotnet/core/sdk:3.1
+    depends_on:
+    - zookeeper
+    - kafka
+    - mssql
+    - cdcservice
+    environment:
+      KafkaBootstrapServers: "kafka:29092"
+      ConnectionStrings__EventuateTramDbConnection: "Server=mssql;Database=TramDb;User Id=sa;Password=App@Passw0rd"
+    volumes:
+    - ./bin/Release/netcoreapp3.1:/app
+    working_dir: /app
+    entrypoint: [ "dotnet", "test", "IO.Eventuate.Tram.Tests.dll", "--verbosity", "normal", "--logger", "trx" ]
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
-    hostname: zookeeper
-    container_name: zookeeper
-    ports:
-      - "2181:2181"
+    image: confluentinc/cp-zookeeper:5.5.0
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-
   kafka:
-    image: confluentinc/cp-kafka:latest
-    hostname: kafka
-    container_name: kafka
+    image: confluentinc/cp-kafka:5.5.0
     depends_on:
       - zookeeper
-    ports:
-      - "9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
-      CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
   cdcservice:
     image: eventuateio/eventuate-cdc-service:${CDC_SERVICE_DOCKER_VERSION:?You must set the CDC_SERVICE_DOCKER_VERSION environment variable.}
     depends_on:
@@ -46,10 +53,11 @@ services:
     environment:
       EVENTUATELOCAL_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       EVENTUATELOCAL_ZOOKEEPER_CONNECTION_STRING: zookeeper:2181
+      
       EVENTUATE_CDC_READER_READER1_TYPE: polling
-      EVENTUATE_CDC_READER_READER1_DATASOURCEURL: jdbc:sqlserver:LAPTOP-7G6A2VOR;databaseName=TramDb
+      EVENTUATE_CDC_READER_READER1_DATASOURCEURL: jdbc:sqlserver://mssql;databaseName=TramDb
       EVENTUATE_CDC_READER_READER1_DATASOURCEUSERNAME: sa
-      EVENTUATE_CDC_READER_READER1_DATASOURCEPASSWORD: Sa@123
+      EVENTUATE_CDC_READER_READER1_DATASOURCEPASSWORD: App@Passw0rd
       EVENTUATE_CDC_READER_READER1_DATASOURCEDRIVERCLASSNAME: com.microsoft.sqlserver.jdbc.SQLServerDriver
       EVENTUATE_CDC_READER_READER1_LEADERSHIPLOCKPATH: /eventuatelocal/cdc/leader/1
 
@@ -63,6 +71,6 @@ services:
   mssql:
     image: mcr.microsoft.com/mssql/server:2017-CU20-ubuntu-16.04
     environment:
-      SA_PASSWORD: "Sa@123"
+      SA_PASSWORD: "App@Passw0rd"
       ACCEPT_EULA: "Y"
       MSSQL_MEMORY_LIMIT_MB: "500"
