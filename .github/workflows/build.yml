@@ -20,6 +20,9 @@ jobs:
       with:
         dotnet-version: 3.1.201
 
+    - name: InitNuget
+      run: dotnet nuget  add source https://api.bintray.com/nuget/eventuateio-oss/eventuateio-dotnet-snapshots
+
     - name: Build
       working-directory: ./IO.Eventuate.Tram.Tests
       run: ./test.sh

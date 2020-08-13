@@ -3,6 +3,8 @@
 set -e
 set -x
 
+dotnet build -c release
+
 docker-compose down
 docker-compose up -d mssql
 
