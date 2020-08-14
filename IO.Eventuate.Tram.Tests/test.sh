@@ -3,6 +3,13 @@
 set -e
 set -x
 
+if dotnet nuget list source | grep -q 'https://api.bintray.com/nuget/eventuateio-oss/eventuateio-dotnet-snapshots'; then
+  echo "Package already exists"
+else
+  echo "Add package" 
+  dotnet nuget add source https://api.bintray.com/nuget/eventuateio-oss/eventuateio-dotnet-snapshots
+fi
+
 dotnet build -c release
 
 docker-compose down
