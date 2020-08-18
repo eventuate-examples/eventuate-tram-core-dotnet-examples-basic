@@ -15,7 +15,6 @@ using NSubstitute;
 using Microsoft.EntityFrameworkCore;
 using IO.Eventuate.Tram.Messaging.Consumer;
 using System.Collections.Concurrent;
-using System.Threading.Channels;
 
 namespace IO.Eventuate.Tram.Tests
 {
@@ -45,12 +44,23 @@ namespace IO.Eventuate.Tram.Tests
         [TestInitialize]
         public void SetUp()
         {
+            var services = new ServiceCollection()
+            .AddLogging(builder =>
+            {
+                builder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
+                builder.AddConsole();
+                builder.AddDebug();
+            })
+            .BuildServiceProvider();
+            var loggerFactory = services.GetRequiredService<ILoggerFactory>();
+            var loggerProd = loggerFactory.CreateLogger<DatabaseMessageProducer>();
+            var loggerCons = loggerFactory.CreateLogger<DecoratedMessageHandlerFactory>();
             //Producer
             IdGenerator generator = new IdGenerator();
             var options = new DbContextOptionsBuilder<EventuateTramDbContext>().UseSqlServer(TestSettings.EventuateTramDbConnection).Options;
             var schema = new EventuateSchema(TestSettings.EventuateTramDbSchema);
             EventuateTramDbContextProvider provider = new EventuateTramDbContextProvider(options, schema);
-            messageProducer = new DatabaseMessageProducer(new List<IMessageInterceptor>(), generator, provider, Substitute.For<ILogger<DatabaseMessageProducer>>());
+            messageProducer = new DatabaseMessageProducer(new List<IMessageInterceptor>(), generator, provider, loggerProd);
 
             //Consumer
             PrePostHandlerMessageHandlerDecorator prepostmessageHandlerDecorator = new PrePostHandlerMessageHandlerDecorator();
@@ -59,8 +69,8 @@ namespace IO.Eventuate.Tram.Tests
             messageConsumer = new KafkaMessageConsumer(TestSettings.KafkaBootstrapServers,
                 EventuateKafkaConsumerConfigurationProperties.Empty(),
                 new DecoratedMessageHandlerFactory(decorators,
-                Substitute.For<ILogger<DecoratedMessageHandlerFactory>>()),
-                Substitute.For<ILoggerFactory>(),
+                loggerCons),
+                loggerFactory,
                 Substitute.For<IServiceScopeFactory>());
 
         }
@@ -69,7 +79,6 @@ namespace IO.Eventuate.Tram.Tests
         {
             messageConsumer.Subscribe(subscriberId, channels, MessageHandler);
             messageProducer.Send(destination, MessageBuilder.WithPayload(payload).Build());
-
             IMessage message;
             queue.TryTake(out message, TimeSpan.FromSeconds(10));
 
