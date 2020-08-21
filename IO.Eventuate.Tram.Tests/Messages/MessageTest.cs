@@ -63,13 +63,11 @@ namespace IO.Eventuate.Tram.Tests
             messageProducer = new DatabaseMessageProducer(new List<IMessageInterceptor>(), generator, provider, loggerProd);
 
             //Consumer
-            PrePostHandlerMessageHandlerDecorator prepostmessageHandlerDecorator = new PrePostHandlerMessageHandlerDecorator();
             IList<IMessageHandlerDecorator> decorators = new List<IMessageHandlerDecorator>();
-            decorators.Add((IMessageHandlerDecorator)prepostmessageHandlerDecorator);
+            decorators.Add(Substitute.For<IMessageHandlerDecorator>());
             messageConsumer = new KafkaMessageConsumer(TestSettings.KafkaBootstrapServers,
                 EventuateKafkaConsumerConfigurationProperties.Empty(),
-                new DecoratedMessageHandlerFactory(decorators,
-                loggerCons),
+                new DecoratedMessageHandlerFactory(decorators, loggerCons),
                 loggerFactory,
                 Substitute.For<IServiceScopeFactory>());
 
@@ -92,51 +90,6 @@ namespace IO.Eventuate.Tram.Tests
         {
             queue.Add((IO.Eventuate.Tram.Messaging.Common.Message)message);
         }
-        public void Accept(SubscriberIdAndMessage subscriberIdAndMessage, IServiceProvider serviceProvider, IMessageHandlerDecoratorChain chain)
-        {
-
-        }
-        public class PrePostHandlerMessageHandlerDecorator : IMessageHandlerDecorator
-        {
-            public Action<SubscriberIdAndMessage, IServiceProvider, IMessageHandlerDecoratorChain> Accept =>
-                (subscriberIdAndMessage, serviceProvider, messageHandlerDecoratorChain) =>
-                {
-                    IMessage message = subscriberIdAndMessage.Message;
-                    string subscriberId = subscriberIdAndMessage.SubscriberId;
-                    IMessageInterceptor[] messageInterceptors =
-                        serviceProvider.GetServices<IMessageInterceptor>().ToArray();
-                    PreHandle(subscriberId, message, messageInterceptors);
-                    try
-                    {
-                        messageHandlerDecoratorChain.InvokeNext(subscriberIdAndMessage, serviceProvider);
-                        PostHandle(subscriberId, message, messageInterceptors, null);
-                    }
-                    catch (Exception e)
-                    {
-                        PostHandle(subscriberId, message, messageInterceptors, e);
-                        throw;
-                    }
-                };
-
-            private void PreHandle(string subscriberId, IMessage message, IEnumerable<IMessageInterceptor> messageInterceptors)
-            {
-                foreach (IMessageInterceptor messageInterceptor in messageInterceptors)
-                {
-                    messageInterceptor.PreHandle(subscriberId, message);
-                }
-            }
-
-
-            private void PostHandle(string subscriberId, IMessage message, IEnumerable<IMessageInterceptor> messageInterceptors, Exception e)
-            {
-                foreach (IMessageInterceptor messageInterceptor in messageInterceptors)
-                {
-                    messageInterceptor.PostHandle(subscriberId, message, e);
-                }
-            }
-            public int Order => BuiltInMessageHandlerDecoratorOrder.PrePostHandlerMessageHandlerDecorator;
-        }
-
 
         public class EventuateTramDbContextProvider : IEventuateTramDbContextProvider
         {
