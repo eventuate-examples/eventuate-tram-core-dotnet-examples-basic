@@ -42,7 +42,7 @@ docker-compose run --rm wait-for-db
 if [ -z "$USE_EXISTING_CONTAINERS" ] ; then
   docker-compose run --rm dbsetup
 fi
-  
+
 docker-compose up -d zookeeper
 docker-compose up -d kafka
 docker-compose up -d cdcservice
@@ -50,12 +50,12 @@ docker-compose up -d cdcservice
 # Wait for docker containers to start up
 ./wait-for-services.sh
 
-# Print docker status
-docker ps
-docker stats --no-stream --all
-
 # Run tests
 docker-compose run --rm eventuatetramtests
 
+
 # Tear down test environment
-docker-compose down -v --remove-orphans
+
+if [ -z "$KEEP_RUNNING" ] ; then
+  docker-compose down -v --remove-orphans
+fi
