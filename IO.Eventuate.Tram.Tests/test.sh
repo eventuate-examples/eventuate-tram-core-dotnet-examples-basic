@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 set -e
-set -x
 
 KEEP_RUNNING=
 USE_EXISTING_CONTAINERS=
@@ -15,6 +14,10 @@ while [ ! -z "$*" ] ; do
       USE_EXISTING_CONTAINERS=yes
       ;;
     "--help" )
+      echo ./test.sh --keep-running --use-existing-containers
+      exit 0
+      ;;
+    *)
       echo ./test.sh --keep-running --use-existing-containers
       exit 0
       ;;

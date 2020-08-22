@@ -20,7 +20,6 @@ while [[ "$done" = false ]]; do
 			done=true
 		else
 			done=false
-			echo $url
 			break
 		fi
 	done
