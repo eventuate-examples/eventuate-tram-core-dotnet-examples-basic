@@ -51,7 +51,9 @@ namespace IO.Eventuate.Tram.Tests
                 builder.AddConsole();
                 builder.AddDebug();
             })
+            .AddSingleton<IEnumerable<IMessageInterceptor>>(new List<IMessageInterceptor>())
             .BuildServiceProvider();
+
             var loggerFactory = services.GetRequiredService<ILoggerFactory>();
             var loggerProd = loggerFactory.CreateLogger<DatabaseMessageProducer>();
             var loggerCons = loggerFactory.CreateLogger<DecoratedMessageHandlerFactory>();
@@ -64,12 +66,16 @@ namespace IO.Eventuate.Tram.Tests
 
             //Consumer
             IList<IMessageHandlerDecorator> decorators = new List<IMessageHandlerDecorator>();
-            decorators.Add(Substitute.For<IMessageHandlerDecorator>());
+            PrePostHandlerMessageHandlerDecorator prepostmessageHandlerDecorator = new PrePostHandlerMessageHandlerDecorator();
+            decorators.Add(prepostmessageHandlerDecorator);
+
+            var serviceScopeFactory = services.GetRequiredService<IServiceScopeFactory>();
+
             messageConsumer = new KafkaMessageConsumer(TestSettings.KafkaBootstrapServers,
                 EventuateKafkaConsumerConfigurationProperties.Empty(),
                 new DecoratedMessageHandlerFactory(decorators, loggerCons),
                 loggerFactory,
-                Substitute.For<IServiceScopeFactory>());
+                serviceScopeFactory);
 
         }
         [TestMethod]
@@ -81,7 +87,7 @@ namespace IO.Eventuate.Tram.Tests
             queue.TryTake(out message, TimeSpan.FromSeconds(10));
 
             Assert.IsNotNull(message);
-            Assert.Equals(payload, message.Payload);
+            Assert.AreEqual(payload, message.Payload);
 
         }
 
