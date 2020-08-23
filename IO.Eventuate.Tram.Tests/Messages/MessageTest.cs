@@ -44,32 +44,33 @@ namespace IO.Eventuate.Tram.Tests
         [TestInitialize]
         public void SetUp()
         {
-            var services = new ServiceCollection()
+            var serviceCollection = new ServiceCollection()
             .AddLogging(builder =>
             {
                 builder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
                 builder.AddConsole();
                 builder.AddDebug();
             })
-            .BuildServiceProvider();
-            var loggerFactory = services.GetRequiredService<ILoggerFactory>();
-            var loggerProd = loggerFactory.CreateLogger<DatabaseMessageProducer>();
-            var loggerCons = loggerFactory.CreateLogger<DecoratedMessageHandlerFactory>();
-            //Producer
-            IdGenerator generator = new IdGenerator();
-            var options = new DbContextOptionsBuilder<EventuateTramDbContext>().UseSqlServer(TestSettings.EventuateTramDbConnection).Options;
-            var schema = new EventuateSchema(TestSettings.EventuateTramDbSchema);
-            EventuateTramDbContextProvider provider = new EventuateTramDbContextProvider(options, schema);
-            messageProducer = new DatabaseMessageProducer(new List<IMessageInterceptor>(), generator, provider, loggerProd);
+            .AddSingleton<IEnumerable<IMessageInterceptor>>(new List<IMessageInterceptor>());
 
-            //Consumer
-            IList<IMessageHandlerDecorator> decorators = new List<IMessageHandlerDecorator>();
-            decorators.Add(Substitute.For<IMessageHandlerDecorator>());
-            messageConsumer = new KafkaMessageConsumer(TestSettings.KafkaBootstrapServers,
-                EventuateKafkaConsumerConfigurationProperties.Empty(),
-                new DecoratedMessageHandlerFactory(decorators, loggerCons),
-                loggerFactory,
-                Substitute.For<IServiceScopeFactory>());
+            serviceCollection.AddDbContext<EventuateTramDbContext>((provider, o) =>
+            {
+                o.UseSqlServer(TestSettings.EventuateTramDbConnection)
+                    //.ReplaceService<IModelCacheKeyFactory, DynamicEventuateSchemaModelCacheKeyFactory>()
+                    ;
+            });
+
+            serviceCollection.AddEventuateTramSqlKafkaTransport(TestSettings.EventuateTramDbSchema,
+              TestSettings.KafkaBootstrapServers,
+            	EventuateKafkaConsumerConfigurationProperties.Empty(), (provider, dbContextOptionsBuilder) =>
+            	{
+            		dbContextOptionsBuilder.UseSqlServer(TestSettings.EventuateTramDbConnection);
+            	});
+
+            var services = serviceCollection.BuildServiceProvider();
+
+            messageConsumer = services.GetRequiredService<IMessageConsumer>();
+            messageProducer = services.GetRequiredService<IMessageProducer>();
 
         }
         [TestMethod]
@@ -81,7 +82,7 @@ namespace IO.Eventuate.Tram.Tests
             queue.TryTake(out message, TimeSpan.FromSeconds(10));
 
             Assert.IsNotNull(message);
-            Assert.Equals(payload, message.Payload);
+            Assert.AreEqual(payload, message.Payload);
 
         }
 
