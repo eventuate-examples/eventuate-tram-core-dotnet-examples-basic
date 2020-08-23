@@ -3,15 +3,11 @@ using System.Collections.Generic;
 using IO.Eventuate.Tram.Messaging.Producer;
 using IO.Eventuate.Tram.Consumer.Kafka;
 using IO.Eventuate.Tram.Messaging.Common;
-using System.Linq;
-using IO.Eventuate.Tram.Messaging.Producer.Database;
 using IO.Eventuate.Tram.Local.Kafka.Consumer;
-using IO.Eventuate.Tram.Consumer.Common;
 using IO.Eventuate.Tram.Database;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
-using NSubstitute;
 using Microsoft.EntityFrameworkCore;
 using IO.Eventuate.Tram.Messaging.Consumer;
 using System.Collections.Concurrent;
@@ -55,9 +51,7 @@ namespace IO.Eventuate.Tram.Tests
 
             serviceCollection.AddDbContext<EventuateTramDbContext>((provider, o) =>
             {
-                o.UseSqlServer(TestSettings.EventuateTramDbConnection)
-                    //.ReplaceService<IModelCacheKeyFactory, DynamicEventuateSchemaModelCacheKeyFactory>()
-                    ;
+                o.UseSqlServer(TestSettings.EventuateTramDbConnection);
             });
 
             serviceCollection.AddEventuateTramSqlKafkaTransport(TestSettings.EventuateTramDbSchema,
@@ -91,37 +85,6 @@ namespace IO.Eventuate.Tram.Tests
         {
             queue.Add((IO.Eventuate.Tram.Messaging.Common.Message)message);
         }
-
-        public class EventuateTramDbContextProvider : IEventuateTramDbContextProvider
-        {
-            private readonly EventuateSchema _eventuateSchema;
-            private readonly DbContextOptions<EventuateTramDbContext> _dbContextOptions;
-
-            public EventuateTramDbContextProvider(DbContextOptions<EventuateTramDbContext> dbContextOptions,
-                EventuateSchema eventuateSchema)
-            {
-                _eventuateSchema = eventuateSchema;
-                _dbContextOptions = dbContextOptions;
-            }
-
-            public EventuateTramDbContext CreateDbContext()
-            {
-                return new EventuateTramDbContext(_dbContextOptions, _eventuateSchema);
-            }
-        }
-
-        public class IdGenerator : IIdGenerator
-        {
-            public IdGenerator()
-            {
-            }
-            public Int128 GenId()
-            {
-                return new Int128(System.DateTime.Now.Ticks, System.DateTime.Now.Ticks - 20);
-            }
-        }
-
         #endregion
-
     }
 }
