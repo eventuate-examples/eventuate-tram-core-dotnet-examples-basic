@@ -49,11 +49,6 @@ namespace IO.Eventuate.Tram.Tests
             })
             .AddSingleton<IEnumerable<IMessageInterceptor>>(new List<IMessageInterceptor>());
 
-            serviceCollection.AddDbContext<EventuateTramDbContext>((provider, o) =>
-            {
-                o.UseSqlServer(TestSettings.EventuateTramDbConnection);
-            });
-
             serviceCollection.AddEventuateTramSqlKafkaTransport(TestSettings.EventuateTramDbSchema,
               TestSettings.KafkaBootstrapServers,
             	EventuateKafkaConsumerConfigurationProperties.Empty(), (provider, dbContextOptionsBuilder) =>
