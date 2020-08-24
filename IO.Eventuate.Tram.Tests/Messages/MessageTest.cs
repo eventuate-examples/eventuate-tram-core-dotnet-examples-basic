@@ -46,8 +46,7 @@ namespace IO.Eventuate.Tram.Tests
                 builder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
                 builder.AddConsole();
                 builder.AddDebug();
-            })
-            .AddSingleton<IEnumerable<IMessageInterceptor>>(new List<IMessageInterceptor>());
+            });
 
             serviceCollection.AddEventuateTramSqlKafkaTransport(TestSettings.EventuateTramDbSchema,
               TestSettings.KafkaBootstrapServers,
