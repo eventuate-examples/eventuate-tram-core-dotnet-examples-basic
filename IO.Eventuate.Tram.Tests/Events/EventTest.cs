@@ -4,10 +4,12 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Extensions.DependencyInjection;
 using IO.Eventuate.Tram.Events.Publisher;
 using IO.Eventuate.Tram.Events.Common;
-using IO.Eventuate.Tram.Tests.TestHelpers;
 using NUnit.Framework.Internal;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using IO.Eventuate.Tram.Local.Kafka.Consumer;
+using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 namespace IO.Eventuate.Tram.Tests
 {
@@ -22,7 +24,6 @@ namespace IO.Eventuate.Tram.Tests
         IDomainEvent domainEvent;
         IDomainEventPublisher domainEventPublisher;
         TestEventConsumer consumer;
-        TestServicesHost testServicesHost;
         public EventTest()
         {
             aggregateType = "Account" + uniqueId;
@@ -32,9 +33,34 @@ namespace IO.Eventuate.Tram.Tests
         [TestInitialize]
         public void SetUp()
         {
-            testServicesHost = new TestServicesHost();
-            testServicesHost.SetAggregateType(aggregateType);
-            IHost host = testServicesHost.SetUpHost();
+            var host = new HostBuilder()
+          .ConfigureServices((hostContext, services) =>
+          {
+              // Logging 
+              services.AddLogging(builder =>
+             {
+                 builder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
+                 builder.AddConsole();
+                 builder.AddDebug();
+             });
+              // Kafka Transport
+              services.AddEventuateTramSqlKafkaTransport(TestSettings.EventuateTramDbSchema, TestSettings.KafkaBootstrapServers, EventuateKafkaConsumerConfigurationProperties.Empty(),
+                 (provider, o) =>
+                 {
+                     o.UseSqlServer(TestSettings.EventuateTramDbConnection);
+                 });
+              // Publisher
+              services.AddEventuateTramEventsPublisher();
+              // Consumer
+              services.AddSingleton<TestEventConsumer>();
+              // Dispatcher
+              services.AddEventuateTramDomainEventDispatcher(Guid.NewGuid().ToString(), provider =>
+             {
+                 var consumer = provider.GetRequiredService<TestEventConsumer>();
+                 return consumer.DomainEventHandlers(aggregateType);
+             });
+          }).Build();
+            host.StartAsync().Wait();
             domainEventPublisher = host.Services.GetService<IDomainEventPublisher>();
             consumer = host.Services.GetService<TestEventConsumer>();
 
