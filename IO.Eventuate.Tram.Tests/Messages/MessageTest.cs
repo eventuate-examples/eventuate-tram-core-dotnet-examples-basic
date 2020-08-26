@@ -6,8 +6,10 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Extensions.DependencyInjection;
 using IO.Eventuate.Tram.Messaging.Consumer;
 using System.Collections.Concurrent;
-using IO.Eventuate.Tram.Tests.TestHelpers;
 using Microsoft.Extensions.Hosting;
+using IO.Eventuate.Tram.Local.Kafka.Consumer;
+using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 namespace IO.Eventuate.Tram.Tests
 {
@@ -24,7 +26,6 @@ namespace IO.Eventuate.Tram.Tests
 
         private BlockingCollection<IMessage> queue = new BlockingCollection<IMessage>();
         public ISet<string> channels = new HashSet<string>();
-        TestServicesHost testServicesHost;
         public MessageTest()
         {
             uniqueId = System.DateTime.Now.Ticks.ToString();
@@ -37,8 +38,24 @@ namespace IO.Eventuate.Tram.Tests
         [TestInitialize]
         public void SetUp()
         {
-            testServicesHost = new TestServicesHost();
-            IHost host = testServicesHost.SetUpHost();
+            var host = new HostBuilder()
+         .ConfigureServices((hostContext, services) =>
+         {
+             // Logging 
+             services.AddLogging(builder =>
+            {
+                builder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
+                builder.AddConsole();
+                builder.AddDebug();
+            });
+             // Kafka Transport
+             services.AddEventuateTramSqlKafkaTransport(TestSettings.EventuateTramDbSchema, TestSettings.KafkaBootstrapServers, EventuateKafkaConsumerConfigurationProperties.Empty(),
+               (provider, o) =>
+               {
+                   o.UseSqlServer(TestSettings.EventuateTramDbConnection);
+               });
+         }).Build();
+            host.StartAsync().Wait();
             messageConsumer = host.Services.GetRequiredService<IMessageConsumer>();
             messageProducer = host.Services.GetRequiredService<IMessageProducer>();
         }
