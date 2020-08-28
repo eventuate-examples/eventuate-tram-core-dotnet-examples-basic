@@ -1,16 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using IO.Eventuate.Tram.Messaging.Producer;
-using IO.Eventuate.Tram.Consumer.Kafka;
 using IO.Eventuate.Tram.Messaging.Common;
-using IO.Eventuate.Tram.Local.Kafka.Consumer;
-using IO.Eventuate.Tram.Database;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.EntityFrameworkCore;
 using IO.Eventuate.Tram.Messaging.Consumer;
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Hosting;
+using IO.Eventuate.Tram.Local.Kafka.Consumer;
+using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 namespace IO.Eventuate.Tram.Tests
 {
@@ -27,7 +26,6 @@ namespace IO.Eventuate.Tram.Tests
 
         private BlockingCollection<IMessage> queue = new BlockingCollection<IMessage>();
         public ISet<string> channels = new HashSet<string>();
-
         public MessageTest()
         {
             uniqueId = System.DateTime.Now.Ticks.ToString();
@@ -40,26 +38,26 @@ namespace IO.Eventuate.Tram.Tests
         [TestInitialize]
         public void SetUp()
         {
-            var serviceCollection = new ServiceCollection()
-            .AddLogging(builder =>
+            var host = new HostBuilder()
+         .ConfigureServices((hostContext, services) =>
+         {
+             // Logging 
+             services.AddLogging(builder =>
             {
                 builder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
                 builder.AddConsole();
                 builder.AddDebug();
             });
-
-            serviceCollection.AddEventuateTramSqlKafkaTransport(TestSettings.EventuateTramDbSchema,
-              TestSettings.KafkaBootstrapServers,
-            	EventuateKafkaConsumerConfigurationProperties.Empty(), (provider, dbContextOptionsBuilder) =>
-            	{
-            		dbContextOptionsBuilder.UseSqlServer(TestSettings.EventuateTramDbConnection);
-            	});
-
-            var services = serviceCollection.BuildServiceProvider();
-
-            messageConsumer = services.GetRequiredService<IMessageConsumer>();
-            messageProducer = services.GetRequiredService<IMessageProducer>();
-
+             // Kafka Transport
+             services.AddEventuateTramSqlKafkaTransport(TestSettings.EventuateTramDbSchema, TestSettings.KafkaBootstrapServers, EventuateKafkaConsumerConfigurationProperties.Empty(),
+               (provider, o) =>
+               {
+                   o.UseSqlServer(TestSettings.EventuateTramDbConnection);
+               });
+         }).Build();
+            host.StartAsync().Wait();
+            messageConsumer = host.Services.GetRequiredService<IMessageConsumer>();
+            messageProducer = host.Services.GetRequiredService<IMessageProducer>();
         }
         [TestMethod]
         public void ShouldReceiveMessage()
